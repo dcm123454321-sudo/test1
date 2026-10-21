@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TwitterStarter" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorAccent">#1D9BF0</item>
+        <item name="colorPrimary">#1D9BF0</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

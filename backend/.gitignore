@@ -1,0 +1,20 @@
+# Android Studio
+.gradle/
+.idea/
+**/build/
+local.properties
+*.iml
+
+# Node.js
+**/node_modules/
+
+# Database credentials
+.env
+**/.env
+
+# Other generated files
+.DS_Store
+Thumbs.db
+
+# Nested reference repository
+/twitter-client-android/

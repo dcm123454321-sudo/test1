@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">USTH Twitter</string>
+    <string name="timeline_title">Home</string>
+    <string name="compose_button">+ Write a tweet</string>
+    <string name="new_tweet">New tweet</string>
+    <string name="compose_hint">What is happening?</string>
+    <string name="cancel">Cancel</string>
+    <string name="post">Post</string>
+    <string name="empty_tweet">Please enter some text</string>
+    <string name="post_saved">Tweet saved to server</string>
+    <string name="tweet_too_long">Tweet must be 280 characters or fewer</string>
+</resources>

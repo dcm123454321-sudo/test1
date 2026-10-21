@@ -1,0 +1,24 @@
+# Android Studio and Gradle
+.gradle/
+.idea/
+**/build/
+local.properties
+*.iml
+
+# Node.js
+**/node_modules/
+
+# Secrets
+.env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Nested cloned GitHub repository
+/twitter-client-android/
+
+# Other
+.DS_Store
+Thumbs.db
