@@ -18,7 +18,7 @@ import com.example.twitterclient.repository.TweetRepository;
 import java.util.List;
 
 public class TimelineFragment extends Fragment {
-    private static final String DEMO_USERNAME = "student";
+
     private TweetAdapter adapter;
     private RecyclerView recyclerView;
     private TweetRepository repository;
@@ -82,7 +82,8 @@ public class TimelineFragment extends Fragment {
                         return;
                     }
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-                    repository.createTweet(DEMO_USERNAME, text, new TweetRepository.Callback<Tweet>() {
+                    repository.createTweet(text,
+                            new TweetRepository.Callback<Tweet>() {
                         @Override
                         public void onSuccess(Tweet tweet) {
                             if (!isAdded()) return;
