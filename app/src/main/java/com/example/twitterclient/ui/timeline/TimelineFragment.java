@@ -16,6 +16,9 @@ import com.example.twitterclient.R;
 import com.example.twitterclient.model.Tweet;
 import com.example.twitterclient.repository.TweetRepository;
 import java.util.List;
+import android.widget.Button;
+import com.example.twitterclient.MainActivity;
+import com.example.twitterclient.auth.SessionManager;
 
 public class TimelineFragment extends Fragment {
 
@@ -41,6 +44,18 @@ public class TimelineFragment extends Fragment {
         recyclerView.setAdapter(adapter);
         view.findViewById(R.id.compose_button).setOnClickListener(v -> showComposeDialog());
         loadTweets();
+        Button logoutButton = view.findViewById(R.id.buttonLogout);
+
+        logoutButton.setOnClickListener(v -> {
+            // Delete the locally stored JWT and username
+            SessionManager session =
+                    new SessionManager(requireContext());
+
+            session.logout();
+
+            // Return to the login screen
+            ((MainActivity) requireActivity()).showLogin();
+        });
     }
 
     private void loadTweets() {
