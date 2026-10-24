@@ -96,4 +96,69 @@ public class ProfileRepository {
 
         queue.add(request);
     }
+
+
+    public void updateMyProfile(
+            String displayName,
+            String bio,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("displayName", displayName);
+            body.put("bio", bio);
+
+            JsonObjectRequest request = new JsonObjectRequest(
+                    Request.Method.PATCH,
+                    BASE_URL + "/api/users/me",
+                    body,
+                    success,
+                    failure
+            ) {
+                @Override
+                public Map<String, String> getHeaders() {
+                    Map<String, String> headers = new HashMap<>();
+
+                    String token = session.getToken();
+
+                    if (token != null && !token.isEmpty()) {
+                        headers.put(
+                                "Authorization",
+                                "Bearer " + token
+                        );
+                    }
+
+                    return headers;
+                }
+            };
+
+            queue.add(request);
+
+        } catch (org.json.JSONException error) {
+            failure.onErrorResponse(
+                    new com.android.volley.VolleyError(error)
+            );
+        }
+    }
+
+
+    public void getUserByUsername(
+            String username,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) {
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET,
+                BASE_URL + "/api/users/by-username/"
+                        + android.net.Uri.encode(username),
+                null,
+                success,
+                failure
+        );
+
+        queue.add(request);
+    }
+
+
 }

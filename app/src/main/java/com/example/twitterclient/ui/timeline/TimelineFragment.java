@@ -39,6 +39,10 @@ public class TimelineFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         repository = new TweetRepository(requireContext());
         adapter = new TweetAdapter();
+        adapter.setOnAuthorClickListener(username -> {
+            ((MainActivity) requireActivity())
+                    .showUserProfile(username);
+        });
         recyclerView = view.findViewById(R.id.timeline_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
@@ -55,6 +59,12 @@ public class TimelineFragment extends Fragment {
 
             // Return to the login screen
             ((MainActivity) requireActivity()).showLogin();
+        });
+        Button profileButton =
+                view.findViewById(R.id.buttonProfile);
+
+        profileButton.setOnClickListener(v -> {
+            ((MainActivity) requireActivity()).showProfile();
         });
     }
 

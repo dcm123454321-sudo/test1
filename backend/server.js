@@ -417,6 +417,49 @@ app.get("/api/users/:id", async (req, res) => {
 });
 
 
+app.get("/api/users/by-username/:username", async (req, res) => {
+    const username = req.params.username;
+
+    if (!/^[a-zA-Z0-9_]{3,50}$/.test(username)) {
+        return res.status(400).json({
+            error: "Invalid username"
+        });
+    }
+
+    try {
+        const [rows] = await db.execute(
+            `SELECT
+                id,
+                username,
+                display_name AS displayName,
+                bio,
+                profile_image_url AS profileImageUrl,
+                banner_image_url AS bannerImageUrl,
+                created_at AS createdAt
+             FROM users
+             WHERE username = ?`,
+            [username]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "User not found"
+            });
+        }
+
+        return res.json({ user: rows[0] });
+
+    } catch (error) {
+        console.error("Username lookup error:", error.message);
+
+        return res.status(500).json({
+            error: "Unable to load profile"
+        });
+    }
+});
+
+
+
 app.get("/api/users/:id/posts", async (req, res) => {
     const userId = Number(req.params.id);
 
@@ -459,6 +502,65 @@ app.get("/api/users/:id/posts", async (req, res) => {
     }
 });
 
+
+app.patch("/api/users/me", requireAuth, async (req, res) => {
+    const { displayName, bio } = req.body || {};
+
+    if (
+        typeof displayName !== "string" ||
+        typeof bio !== "string"
+    ) {
+        return res.status(400).json({
+            error: "Display name and bio must be strings"
+        });
+    }
+
+    const cleanName = displayName.trim();
+    const cleanBio = bio.trim();
+
+    if (
+        cleanName.length < 1 ||
+        cleanName.length > 100 ||
+        cleanBio.length > 280
+    ) {
+        return res.status(400).json({
+            error: "Display name must be 1-100 characters; bio max 280"
+        });
+    }
+
+    try {
+        await db.execute(
+            `UPDATE users
+             SET display_name = ?, bio = ?
+             WHERE id = ?`,
+            [cleanName, cleanBio, req.authUser.id]
+        );
+
+        const [rows] = await db.execute(
+            `SELECT id, username,
+                    display_name AS displayName,
+                    bio,
+                    profile_image_url AS profileImageUrl,
+                    banner_image_url AS bannerImageUrl,
+                    created_at AS createdAt
+             FROM users
+             WHERE id = ?`,
+            [req.authUser.id]
+        );
+
+        return res.json({
+            message: "Profile updated",
+            user: rows[0]
+        });
+
+    } catch (error) {
+        console.error("Profile update error:", error.message);
+
+        return res.status(500).json({
+            error: "Unable to update profile"
+        });
+    }
+});
 
 
 // Start the server

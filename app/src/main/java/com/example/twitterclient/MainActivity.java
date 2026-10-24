@@ -6,6 +6,7 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
+import com.example.twitterclient.ui.profile.ProfileFragment;
 import com.example.twitterclient.auth.SessionManager;
 import com.example.twitterclient.ui.auth.LoginFragment;
 import com.example.twitterclient.ui.auth.RegisterFragment;
@@ -30,6 +31,16 @@ public class MainActivity extends AppCompatActivity {
                 showLogin();
             }
         }
+    }
+    public void showProfile() {
+        openFragment(new ProfileFragment());
+    }
+
+
+    public void showUserProfile(String username) {
+        openFragment(
+                ProfileFragment.forUsername(username)
+        );
     }
 
     private void openFragment(Fragment fragment) {
