@@ -341,6 +341,125 @@ app.post("/api/auth/login", async (req, res) => {
 
 
 
+ // Get the currently logged-in user's profile
+app.get("/api/users/me", requireAuth, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT
+                id,
+                username,
+                display_name AS displayName,
+                email,
+                bio,
+                profile_image_url AS profileImageUrl,
+                banner_image_url AS bannerImageUrl,
+                created_at AS createdAt
+             FROM users
+             WHERE id = ?`,
+            [req.authUser.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "User not found"
+            });
+        }
+
+        return res.json({ user: rows[0] });
+
+    } catch (error) {
+        console.error("Profile error:", error.message);
+        return res.status(500).json({
+            error: "Unable to load profile"
+        });
+    }
+});
+
+// Get a user's public profile
+app.get("/api/users/:id", async (req, res) => {
+    const userId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+        return res.status(400).json({
+            error: "Invalid user ID"
+        });
+    }
+
+    try {
+        const [rows] = await db.execute(
+            `SELECT
+                id,
+                username,
+                display_name AS displayName,
+                bio,
+                profile_image_url AS profileImageUrl,
+                banner_image_url AS bannerImageUrl,
+                created_at AS createdAt
+             FROM users
+             WHERE id = ?`,
+            [userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "User not found"
+            });
+        }
+
+        return res.json({ user: rows[0] });
+
+    } catch (error) {
+        console.error("Profile error:", error.message);
+        return res.status(500).json({
+            error: "Unable to load profile"
+        });
+    }
+});
+
+
+app.get("/api/users/:id/posts", async (req, res) => {
+    const userId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+        return res.status(400).json({
+            error: "Invalid user ID"
+        });
+    }
+
+    try {
+        // Find the username associated with the user ID
+        const [users] = await db.execute(
+            "SELECT username FROM users WHERE id = ?",
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                error: "User not found"
+            });
+        }
+
+        // Retrieve posts written by this user
+        const [posts] = await db.execute(
+            `SELECT id, username, content, created_at
+             FROM posts
+             WHERE username = ?
+             ORDER BY created_at DESC, id DESC`,
+            [users[0].username]
+        );
+
+        return res.json({ posts });
+
+    } catch (error) {
+        console.error("User posts error:", error.message);
+
+        return res.status(500).json({
+            error: "Unable to retrieve user posts"
+        });
+    }
+});
+
+
 
 // Start the server
 app.listen(PORT, () => {
