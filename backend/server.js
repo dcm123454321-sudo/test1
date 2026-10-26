@@ -7,7 +7,27 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const multer = require("multer");
+const sharp = require("sharp");
+const fs = require("fs/promises");
+const path = require("path");
+const crypto = require("crypto");
+
+const UPLOAD_DIR = path.join(__dirname, "uploads");
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024
+    }
+});
+
+
 app.use(express.json());
+app.use(
+    "/uploads",
+    express.static(UPLOAD_DIR)
+);
 
 // MySQL connection pool
 const db = mysql.createPool({
@@ -561,6 +581,127 @@ app.patch("/api/users/me", requireAuth, async (req, res) => {
         });
     }
 });
+
+
+
+app.post(
+    "/api/users/me/images/:kind",
+    requireAuth,
+    (req, res, next) => {
+        upload.single("image")(req, res, error => {
+            if (error) {
+                return res.status(400).json({
+                    error: error.code === "LIMIT_FILE_SIZE"
+                        ? "Image must be smaller than 5 MB"
+                        : "Invalid image upload"
+                });
+            }
+
+            next();
+        });
+    },
+    async (req, res) => {
+
+        const kind = req.params.kind;
+
+        if (kind !== "avatar" && kind !== "banner") {
+            return res.status(400).json({
+                error: "Image type must be avatar or banner"
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                error: "No image provided"
+            });
+        }
+
+        let savedPath = null;
+
+        try {
+            // Validate and decode the image.
+            // Re-encoding strips metadata and produces a safe format.
+            const image = sharp(req.file.buffer, {
+                limitInputPixels: 25000000
+            });
+
+            const metadata = await image.metadata();
+
+            if (!["jpeg", "png", "webp", "gif"].includes(
+                metadata.format
+            )) {
+                return res.status(400).json({
+                    error: "Unsupported image format"
+                });
+            }
+
+            // Avatar is square; banner is wide.
+            const width = kind === "avatar" ? 400 : 1200;
+            const height = kind === "avatar" ? 400 : 400;
+
+            const processed = await sharp(req.file.buffer, {
+                limitInputPixels: 25000000
+            })
+                .rotate()
+                .resize(width, height, {
+                    fit: "cover",
+                    position: "centre"
+                })
+                .webp({ quality: 85 })
+                .toBuffer();
+
+            await fs.mkdir(UPLOAD_DIR, {
+                recursive: true
+            });
+
+            const filename =
+                crypto.randomUUID() + ".webp";
+
+            savedPath = path.join(UPLOAD_DIR, filename);
+
+            await fs.writeFile(savedPath, processed, {
+                flag: "wx"
+            });
+
+            const imageUrl = "/uploads/" + filename;
+
+            const column = kind === "avatar"
+                ? "profile_image_url"
+                : "banner_image_url";
+
+            await db.execute(
+                `UPDATE users SET ${column} = ? WHERE id = ?`,
+                [imageUrl, req.authUser.id]
+            );
+
+            return res.json({
+                message: "Image uploaded successfully",
+                kind,
+                imageUrl
+            });
+
+        } catch (error) {
+            if (savedPath) {
+                await fs.unlink(savedPath).catch(() => {});
+            }
+
+            console.error("Image upload error:", error.message);
+
+            if (
+                error.name === "Error" &&
+                /unsupported|invalid|corrupt|image/i.test(error.message)
+            ) {
+                return res.status(400).json({
+                    error: "Invalid image"
+                });
+            }
+
+            return res.status(500).json({
+                error: "Unable to upload image"
+            });
+        }
+    }
+);
 
 
 // Start the server

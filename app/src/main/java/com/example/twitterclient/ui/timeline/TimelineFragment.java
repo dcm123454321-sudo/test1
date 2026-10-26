@@ -19,6 +19,7 @@ import java.util.List;
 import android.widget.Button;
 import com.example.twitterclient.MainActivity;
 import com.example.twitterclient.auth.SessionManager;
+import android.util.Log;
 
 public class TimelineFragment extends Fragment {
 
@@ -61,8 +62,17 @@ public class TimelineFragment extends Fragment {
             // Return to the login screen
             ((MainActivity) requireActivity()).showLogin();
         });
-        TextView profileButton =
-                view.findViewById(R.id.buttonProfile);
+        View profileButton = view.findViewById(R.id.buttonProfile);
+
+        profileButton.setOnClickListener(v -> {
+            Log.d("PROFILE_DEBUG", "Profile button clicked");
+
+            if (!isAdded()) return;
+
+            Log.d("PROFILE_DEBUG", "Opening ProfileFragment");
+
+            ((MainActivity) requireActivity()).showProfile();
+        });
 
         profileButton.setOnClickListener(v -> {
             ((MainActivity) requireActivity()).showProfile();

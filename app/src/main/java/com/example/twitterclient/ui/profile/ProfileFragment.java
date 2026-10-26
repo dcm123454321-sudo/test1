@@ -8,6 +8,11 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
+import android.net.Uri;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,6 +23,8 @@ import android.app.AlertDialog;
 import android.text.InputType;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
+import com.bumptech.glide.Glide;
 
 import com.example.twitterclient.MainActivity;
 import com.example.twitterclient.R;
@@ -46,6 +53,35 @@ public class ProfileFragment extends Fragment {
     private TextView bio;
     private TextView joinedDate;
     private TextView emptyMessage;
+    private static final String SERVER_URL =
+            "http://10.0.2.2:3000";
+
+    private ImageView profileAvatar;
+    private ImageView profileBanner;
+
+    private String selectedImageKind = "avatar";
+
+    private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker =
+            registerForActivityResult(
+                    new ActivityResultContracts.PickVisualMedia(),
+                    uri -> {
+                        if (uri != null) {
+                            uploadSelectedImage(uri, selectedImageKind);
+                        }
+                    }
+            );
+
+    private void pickProfileImage(String kind) {
+        selectedImageKind = kind;
+
+        imagePicker.launch(
+                new PickVisualMediaRequest.Builder()
+                        .setMediaType(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE
+                        )
+                        .build()
+        );
+    }
 
     @Nullable
     @Override
@@ -72,14 +108,18 @@ public class ProfileFragment extends Fragment {
         fragment.setArguments(args);
 
         return fragment;
+
     }
 
     @Override
     public void onViewCreated(
             @NonNull View view,
             @Nullable Bundle savedInstanceState
+
     ) {
         super.onViewCreated(view, savedInstanceState);
+        profileAvatar = view.findViewById(R.id.imageProfileAvatar);
+        profileBanner = view.findViewById(R.id.imageProfileBanner);
 
         repository = new ProfileRepository(requireContext());
 
@@ -151,6 +191,7 @@ public class ProfileFragment extends Fragment {
                     try {
                         JSONObject user =
                                 response.getJSONObject("user");
+                                loadProfileImages(user);
 
                         int userId = user.getInt("id");
 
@@ -336,6 +377,28 @@ public class ProfileFragment extends Fragment {
 
         layout.addView(nameInput);
         layout.addView(bioInput);
+        Button changeAvatarButton =
+                new Button(requireContext());
+
+        changeAvatarButton.setText("Change profile picture");
+
+        changeAvatarButton.setOnClickListener(v -> {
+            dialogImagePicker("avatar");
+        });
+
+        layout.addView(changeAvatarButton);
+
+
+        Button changeBannerButton =
+                new Button(requireContext());
+
+        changeBannerButton.setText("Change banner");
+
+        changeBannerButton.setOnClickListener(v -> {
+            dialogImagePicker("banner");
+        });
+
+        layout.addView(changeBannerButton);
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle("Edit profile")
@@ -416,6 +479,10 @@ public class ProfileFragment extends Fragment {
     }
 
 
+    private void dialogImagePicker(String kind) {
+        pickProfileImage(kind);
+    }
+
 
     private void loadProfileByUsername(String selectedUsername) {
 
@@ -427,6 +494,7 @@ public class ProfileFragment extends Fragment {
                     try {
                         JSONObject user =
                                 response.getJSONObject("user");
+                                loadProfileImages(user);
 
                         int userId = user.getInt("id");
 
@@ -482,5 +550,117 @@ public class ProfileFragment extends Fragment {
         );
     }
 
+
+    private void loadProfileImages(JSONObject user) {
+
+        String avatarPath =
+                user.optString("profileImageUrl", "");
+
+        String bannerPath =
+                user.optString("bannerImageUrl", "");
+
+        // Load the avatar, if the account has one.
+        if (!avatarPath.isEmpty() &&
+                !avatarPath.equals("null")) {
+
+            String fullAvatarUrl = avatarPath.startsWith("http")
+                    ? avatarPath
+                    : SERVER_URL + avatarPath;
+
+            Glide.with(this)
+                    .load(fullAvatarUrl)
+                    .circleCrop()
+                    .into(profileAvatar);
+
+        } else {
+            // No uploaded image: show the existing placeholder.
+            profileAvatar.setImageResource(
+                    android.R.drawable.ic_menu_myplaces
+            );
+        }
+
+        // Load the banner, if the account has one.
+        if (!bannerPath.isEmpty() &&
+                !bannerPath.equals("null")) {
+
+            String fullBannerUrl = bannerPath.startsWith("http")
+                    ? bannerPath
+                    : SERVER_URL + bannerPath;
+
+            Glide.with(this)
+                    .load(fullBannerUrl)
+                    .centerCrop()
+                    .into(profileBanner);
+
+        } else {
+            // Retain the gray placeholder when no banner exists.
+            profileBanner.setImageDrawable(null);
+        }
+    }
+
+
+    private void uploadSelectedImage(Uri imageUri, String kind) {
+
+        if (!isAdded()) return;
+
+        Toast.makeText(
+                requireContext(),
+                "Uploading image...",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        repository.uploadProfileImage(
+                imageUri,
+                kind,
+                response -> {
+                    if (!isAdded()) return;
+
+                    Toast.makeText(
+                            requireContext(),
+                            "Image uploaded successfully",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    // Reload the currently displayed profile.
+                    String selectedUsername = null;
+
+                    if (getArguments() != null) {
+                        selectedUsername =
+                                getArguments().getString(ARG_USERNAME);
+                    }
+
+                    if (selectedUsername == null) {
+                        loadMyProfile();
+                    } else {
+                        loadProfileByUsername(selectedUsername);
+                    }
+                },
+                error -> {
+                    if (!isAdded()) return;
+
+                    int status = error.networkResponse == null
+                            ? 0
+                            : error.networkResponse.statusCode;
+
+                    String message;
+
+                    if (status == 401) {
+                        message = "Session expired. Please log in again.";
+                    } else if (status == 400) {
+                        message = "Invalid image or file too large";
+                    } else if (error.getCause() != null) {
+                        message = error.getCause().getMessage();
+                    } else {
+                        message = "Image upload failed";
+                    }
+
+                    Toast.makeText(
+                            requireContext(),
+                            message,
+                            Toast.LENGTH_LONG
+                    ).show();
+                }
+        );
+    }
 
 }
